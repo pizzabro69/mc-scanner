@@ -1,4 +1,6 @@
 import logging
+import struct
+import socket
 
 import httpx
 
@@ -6,14 +8,12 @@ from scraper.base import BaseScraper, DiscoveredServer
 
 logger = logging.getLogger(__name__)
 
-# Country code to name mapping for the API
-COUNTRY_NAMES = {
-    "NL": "Netherlands",
-    "DE": "Germany",
-    "BE": "Belgium",
-    "GB": "United Kingdom",
-    "FR": "France",
-}
+PAGE_SIZE = 100
+
+
+def int_ip_to_str(ip_int: int) -> str:
+    """Convert a 32-bit integer IP to dotted-quad string."""
+    return socket.inet_ntoa(struct.pack("!I", ip_int))
 
 
 class CornbreadAPIScraper(BaseScraper):
@@ -42,50 +42,61 @@ class CornbreadAPIScraper(BaseScraper):
         self, client: httpx.AsyncClient, country_code: str
     ) -> list[DiscoveredServer]:
         servers: list[DiscoveredServer] = []
-        page = 0
+        skip = 0
 
         while True:
             try:
                 resp = await client.get(
                     f"{self.BASE_URL}/servers",
                     params={
-                        "country": COUNTRY_NAMES.get(country_code, country_code),
-                        "page": page,
+                        "country": country_code,
+                        "skip": skip,
+                        "limit": PAGE_SIZE,
                     },
                 )
                 resp.raise_for_status()
                 data = resp.json()
             except httpx.HTTPStatusError as e:
-                logger.warning(f"[cornbread] HTTP {e.response.status_code} for {country_code} page {page}")
+                logger.warning(f"[cornbread] HTTP {e.response.status_code} for {country_code} skip={skip}")
                 break
             except Exception:
-                logger.exception(f"[cornbread] Request error for {country_code} page {page}")
+                logger.exception(f"[cornbread] Request error for {country_code} skip={skip}")
                 break
 
             if not data:
                 break
 
             for entry in data:
-                host = entry.get("host") or entry.get("ip")
+                ip_raw = entry.get("ip")
                 port = entry.get("port", 25565)
-                if not host:
+                if ip_raw is None:
                     continue
+
+                # API returns IPs as 32-bit integers
+                if isinstance(ip_raw, int):
+                    try:
+                        host = int_ip_to_str(ip_raw)
+                    except (struct.error, OSError):
+                        continue
+                else:
+                    host = str(ip_raw).strip()
+
+                geo = entry.get("geo") or {}
 
                 servers.append(
                     DiscoveredServer(
-                        host=str(host).strip(),
+                        host=host,
                         port=int(port),
-                        country_code=country_code,
-                        city=entry.get("city"),
-                        latitude=entry.get("lat"),
-                        longitude=entry.get("lon"),
+                        country_code=geo.get("country", country_code),
+                        city=geo.get("city"),
+                        latitude=geo.get("lat"),
+                        longitude=geo.get("lon"),
                         source=self.name,
                     )
                 )
 
-            # If we got fewer results than a full page, we're done
-            if len(data) < 25:
+            if len(data) < PAGE_SIZE:
                 break
-            page += 1
+            skip += PAGE_SIZE
 
         return servers

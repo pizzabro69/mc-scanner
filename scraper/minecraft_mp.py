@@ -82,6 +82,9 @@ class MinecraftMPScraper(BaseScraper):
                 if resp.status_code == 404:
                     break
                 resp.raise_for_status()
+                # Detect redirect back to page 1 (site does this for pages beyond last)
+                if page > 1 and str(resp.url).rstrip("/").endswith(f"/{slug}"):
+                    break
             except httpx.HTTPStatusError:
                 break
 

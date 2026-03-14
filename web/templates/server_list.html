@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% set active_page = "servers" %}
+{% block title %}Servers - MC Scanner{% endblock %}
+
+{% block content %}
+<h1>Servers <span class="muted">({{ total }})</span></h1>
+
+<div class="filters">
+    <form method="get" action="/servers" class="filter-form">
+        <input type="text" name="search" value="{{ search }}" placeholder="Search hostname..." class="input">
+        <select name="country" class="input">
+            <option value="">All Countries</option>
+            {% for c in countries %}
+            <option value="{{ c.country_code }}" {% if country == c.country_code %}selected{% endif %}>
+                {{ c.country_code }} ({{ c.count }})
+            </option>
+            {% endfor %}
+        </select>
+        <select name="sort" class="input">
+            <option value="last_seen" {% if sort == 'last_seen' %}selected{% endif %}>Last Seen</option>
+            <option value="score" {% if sort == 'score' %}selected{% endif %}>Lead Score</option>
+            <option value="players" {% if sort == 'players' %}selected{% endif %}>Players</option>
+            <option value="latency" {% if sort == 'latency' %}selected{% endif %}>Latency</option>
+            <option value="host" {% if sort == 'host' %}selected{% endif %}>Hostname</option>
+        </select>
+        <button type="submit" class="btn">Filter</button>
+    </form>
+</div>
+
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Host</th>
+            <th>Country</th>
+            <th>Score</th>
+            <th>Avg Latency</th>
+            <th>Avg Players</th>
+            <th>Downtime</th>
+            <th>Last Seen</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for s in servers %}
+        <tr>
+            <td><a href="/servers/{{ s.id }}">{{ s.host }}:{{ s.port }}</a></td>
+            <td>{{ s.country_code or '?' }}</td>
+            <td>
+                {% if s.score %}
+                <span class="score-badge score-{{ 'red' if s.score > 70 else 'orange' if s.score > 40 else 'yellow' }}">{{ s.score|round(1) }}</span>
+                {% else %}-{% endif %}
+            </td>
+            <td>{{ (s.avg_latency_ms or 0)|round(0)|int }}ms</td>
+            <td>{{ (s.avg_players or 0)|round(0)|int }}</td>
+            <td>{{ (s.downtime_pct or 0)|round(1) }}%</td>
+            <td>
+                {% if s.last_seen %}
+                <span title="{{ s.last_seen }}">{{ s.last_seen }}</span>
+                {% else %}Never{% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if total_pages > 1 %}
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="/servers?page={{ page - 1 }}&country={{ country or '' }}&search={{ search }}&sort={{ sort }}" class="btn btn-sm">Prev</a>
+    {% endif %}
+    <span class="muted">Page {{ page }} of {{ total_pages }}</span>
+    {% if page < total_pages %}
+    <a href="/servers?page={{ page + 1 }}&country={{ country or '' }}&search={{ search }}&sort={{ sort }}" class="btn btn-sm">Next</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MC Scanner{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h2>MC Scanner</h2>
+            <span class="subtitle">Server Monitor</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="/" class="{% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a></li>
+            <li><a href="/servers" class="{% if active_page == 'servers' %}active{% endif %}">Servers</a></li>
+            <li><a href="/leads" class="{% if active_page == 'leads' %}active{% endif %}">Leads</a></li>
+        </ul>
+    </nav>
+    <main class="content">
+        {% block content %}{% endblock %}
+    </main>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

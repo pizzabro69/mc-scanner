@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% set active_page = "dashboard" %}
+{% block title %}Dashboard - MC Scanner{% endblock %}
+
+{% block content %}
+<h1>Dashboard</h1>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <span class="stat-value">{{ total_servers }}</span>
+        <span class="stat-label">Tracked Servers</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ online_now }}</span>
+        <span class="stat-label">Online Now</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ avg_score }}</span>
+        <span class="stat-label">Avg Lead Score</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ countries|length }}</span>
+        <span class="stat-label">Countries</span>
+    </div>
+</div>
+
+<div class="grid-2">
+    <div class="card">
+        <h3>Top Leads</h3>
+        {% if top_leads %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Server</th>
+                    <th>Country</th>
+                    <th>Score</th>
+                    <th>Downtime</th>
+                    <th>Latency</th>
+                    <th>Players</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lead in top_leads %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td><a href="/servers/{{ lead.server_id }}">{{ lead.host }}:{{ lead.port }}</a></td>
+                    <td>{{ lead.country_code or '?' }}</td>
+                    <td><span class="score-badge score-{{ 'red' if lead.score > 70 else 'orange' if lead.score > 40 else 'yellow' }}">{{ lead.score|round(1) }}</span></td>
+                    <td>{{ lead.downtime_pct|round(1) }}%</td>
+                    <td>{{ (lead.avg_latency_ms or 0)|round(0)|int }}ms</td>
+                    <td>{{ (lead.avg_players or 0)|round(0)|int }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <a href="/leads" class="btn btn-sm">View All Leads</a>
+        {% else %}
+        <p class="muted">No leads scored yet. Data will appear after enough scan cycles.</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h3>Servers by Country</h3>
+        <canvas id="countryChart" height="250"></canvas>
+        <h3 style="margin-top: 1.5rem;">Scan History</h3>
+        <canvas id="cycleChart" height="200"></canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const countryData = {{ countries | tojson }};
+const cycleData = {{ recent_cycles | tojson }};
+
+if (countryData.length > 0) {
+    new Chart(document.getElementById('countryChart'), {
+        type: 'bar',
+        data: {
+            labels: countryData.map(c => c.country_code),
+            datasets: [{
+                label: 'Servers',
+                data: countryData.map(c => c.count),
+                backgroundColor: '#4f8cff',
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { color: '#999' }, grid: { color: '#333' } },
+                x: { ticks: { color: '#999' }, grid: { color: '#333' } },
+            }
+        }
+    });
+}
+
+if (cycleData.length > 0) {
+    const sortedCycles = cycleData.filter(c => c.finished_at).reverse();
+    new Chart(document.getElementById('cycleChart'), {
+        type: 'line',
+        data: {
+            labels: sortedCycles.map(c => new Date(c.started_at * 1000).toLocaleTimeString()),
+            datasets: [
+                {
+                    label: 'Online',
+                    data: sortedCycles.map(c => c.servers_online),
+                    borderColor: '#4caf50',
+                    tension: 0.3,
+                },
+                {
+                    label: 'Scanned',
+                    data: sortedCycles.map(c => c.servers_scanned),
+                    borderColor: '#4f8cff',
+                    tension: 0.3,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true, ticks: { color: '#999' }, grid: { color: '#333' } },
+                x: { ticks: { color: '#999', maxRotation: 45 }, grid: { color: '#333' } },
+            },
+            plugins: { legend: { labels: { color: '#ccc' } } }
+        }
+    });
+}
+</script>
+{% endblock %}

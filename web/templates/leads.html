@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% set active_page = "leads" %}
+{% block title %}Leads - MC Scanner{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Leads <span class="muted">({{ total }})</span></h1>
+    <a href="/leads/export?min_score={{ min_score }}&country={{ country or '' }}" class="btn">Export CSV</a>
+</div>
+
+<div class="filters">
+    <form method="get" action="/leads" class="filter-form">
+        <label class="filter-label">
+            Min Score
+            <input type="number" name="min_score" value="{{ min_score }}" min="0" max="100" step="5" class="input input-sm">
+        </label>
+        <select name="country" class="input">
+            <option value="">All Countries</option>
+            {% for c in countries %}
+            <option value="{{ c.country_code }}" {% if country == c.country_code %}selected{% endif %}>
+                {{ c.country_code }} ({{ c.count }})
+            </option>
+            {% endfor %}
+        </select>
+        <select name="sort" class="input">
+            <option value="score" {% if sort == 'score' %}selected{% endif %}>Score</option>
+            <option value="downtime" {% if sort == 'downtime' %}selected{% endif %}>Downtime %</option>
+            <option value="latency" {% if sort == 'latency' %}selected{% endif %}>Latency</option>
+            <option value="players" {% if sort == 'players' %}selected{% endif %}>Players</option>
+        </select>
+        <button type="submit" class="btn">Filter</button>
+    </form>
+</div>
+
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Server</th>
+            <th>Country</th>
+            <th>Score</th>
+            <th>Downtime</th>
+            <th>Avg Latency</th>
+            <th>P95 Latency</th>
+            <th>Timeouts</th>
+            <th>Avg Players</th>
+            <th>Max Players</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for lead in leads %}
+        <tr>
+            <td>{{ (page - 1) * 50 + loop.index }}</td>
+            <td><a href="/servers/{{ lead.server_id }}">{{ lead.host }}:{{ lead.port }}</a></td>
+            <td>{{ lead.country_code or '?' }}</td>
+            <td><span class="score-badge score-{{ 'red' if lead.score > 70 else 'orange' if lead.score > 40 else 'yellow' }}">{{ lead.score|round(1) }}</span></td>
+            <td>{{ lead.downtime_pct|round(1) }}%</td>
+            <td>{{ (lead.avg_latency_ms or 0)|round(0)|int }}ms</td>
+            <td>{{ (lead.p95_latency_ms or 0)|round(0)|int }}ms</td>
+            <td>{{ lead.timeout_count }}</td>
+            <td>{{ (lead.avg_players or 0)|round(0)|int }}</td>
+            <td>{{ lead.max_players or 0 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if total_pages > 1 %}
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="/leads?page={{ page - 1 }}&min_score={{ min_score }}&country={{ country or '' }}&sort={{ sort }}" class="btn btn-sm">Prev</a>
+    {% endif %}
+    <span class="muted">Page {{ page }} of {{ total_pages }}</span>
+    {% if page < total_pages %}
+    <a href="/leads?page={{ page + 1 }}&min_score={{ min_score }}&country={{ country or '' }}&sort={{ sort }}" class="btn btn-sm">Next</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

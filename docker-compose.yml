@@ -1,0 +1,21 @@
+version: "3.8"
+
+services:
+  mc-scanner:
+    build: .
+    container_name: mc-scanner
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - mc-scanner-data:/data
+    environment:
+      - MCS_DB_PATH=/data/mc_scanner.db
+      - MCS_SCAN_INTERVAL_MINUTES=12
+      - MCS_SCAN_CONCURRENCY=50
+      - MCS_TARGET_COUNTRIES=["NL","DE","BE","GB","FR"]
+      - MCS_WEB_PORT=8000
+
+volumes:
+  mc-scanner-data:
+    driver: local

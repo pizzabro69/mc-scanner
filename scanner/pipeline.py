@@ -20,8 +20,21 @@ class ScanPipeline:
         self._settings = settings
         self._server_repo = server_repo
         self._scan_repo = scan_repo
+        self._running = False
 
     async def run_full_scan(self) -> dict:
+        """Execute a full scan cycle across all active servers."""
+        if self._running:
+            logger.warning("Scan already in progress, skipping")
+            return {"scanned": 0, "online": 0, "total_latency": 0.0}
+
+        self._running = True
+        try:
+            return await self._do_scan()
+        finally:
+            self._running = False
+
+    async def _do_scan(self) -> dict:
         """Execute a full scan cycle across all active servers."""
         servers = await self._server_repo.get_active_servers()
         if not servers:

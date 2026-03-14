@@ -55,6 +55,10 @@ class CornbreadAPIScraper(BaseScraper):
                         "limit": PAGE_SIZE,
                     },
                 )
+                if resp.status_code == 429:
+                    logger.warning(f"[cornbread] HTTP 429 for {country_code}, waiting 60s")
+                    await asyncio.sleep(60)
+                    continue
                 resp.raise_for_status()
                 data = resp.json()
             except httpx.HTTPStatusError as e:

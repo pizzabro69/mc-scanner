@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import struct
 import socket
@@ -63,6 +64,16 @@ class CornbreadAPIScraper(BaseScraper):
                 logger.exception(f"[cornbread] Request error for {country_code} skip={skip}")
                 break
 
+            # API returns {"error": "..."} on rate limit instead of a list
+            if isinstance(data, dict):
+                error_msg = data.get("error", "")
+                if "too many" in error_msg.lower() or "limit" in error_msg.lower():
+                    logger.warning(f"[cornbread] Rate limited, waiting 60s before retry")
+                    await asyncio.sleep(60)
+                    continue
+                logger.warning(f"[cornbread] Unexpected response: {data}")
+                break
+
             if not data:
                 break
 
@@ -98,5 +109,8 @@ class CornbreadAPIScraper(BaseScraper):
             if len(data) < PAGE_SIZE:
                 break
             skip += PAGE_SIZE
+
+            # Small delay to avoid hitting rate limits
+            await asyncio.sleep(1)
 
         return servers

@@ -14,7 +14,13 @@ class Settings(BaseSettings):
 
     # Scraping
     scrape_interval_hours: int = 24
-    target_countries: list[str] = ["NL", "DE", "BE", "GB", "FR"]
+    target_countries: list[str] = [
+        "NL", "DE", "BE", "GB", "FR",         # current
+        "PL", "SE", "NO", "DK", "FI",         # nordics + poland
+        "ES", "PT", "IT", "AT", "CH",         # south/central
+        "CZ", "RO", "HU", "IE", "LU",         # central/east + ireland
+        "SK", "BG", "HR", "LT", "LV", "EE",  # baltics + balkans
+    ]
     primary_countries: list[str] = ["NL"]
 
     # Scoring

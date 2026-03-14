@@ -23,5 +23,26 @@
         {% block content %}{% endblock %}
     </main>
     {% block scripts %}{% endblock %}
+    <script>
+    (function() {
+        const REFRESH_SECONDS = 30;
+        let remaining = REFRESH_SECONDS;
+        const badge = document.createElement('div');
+        badge.style.cssText = 'position:fixed;bottom:1rem;right:1rem;background:#1a1d27;border:1px solid #2a2d3a;color:#6b7080;padding:0.3rem 0.7rem;border-radius:6px;font-size:0.75rem;z-index:999;cursor:pointer;';
+        badge.title = 'Click to pause/resume auto-refresh';
+        document.body.appendChild(badge);
+        let paused = false;
+        badge.addEventListener('click', () => {
+            paused = !paused;
+            badge.style.color = paused ? '#ff9800' : '#6b7080';
+        });
+        setInterval(() => {
+            if (paused) { badge.textContent = 'refresh paused'; return; }
+            remaining--;
+            badge.textContent = 'refresh ' + remaining + 's';
+            if (remaining <= 0) { location.reload(); }
+        }, 1000);
+    })();
+    </script>
 </body>
 </html>

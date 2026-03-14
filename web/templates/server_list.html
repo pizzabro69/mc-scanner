@@ -54,7 +54,7 @@
             <td>{{ (s.downtime_pct or 0)|round(1) }}%</td>
             <td>
                 {% if s.last_seen %}
-                <span title="{{ s.last_seen }}">{{ s.last_seen }}</span>
+                <span class="timestamp" data-ts="{{ s.last_seen }}">{{ s.last_seen }}</span>
                 {% else %}Never{% endif %}
             </td>
         </tr>
@@ -73,4 +73,12 @@
     {% endif %}
 </div>
 {% endif %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.timestamp').forEach(el => {
+    const ts = parseInt(el.dataset.ts);
+    if (ts) el.textContent = new Date(ts * 1000).toLocaleString();
+});
+</script>
 {% endblock %}

@@ -43,7 +43,7 @@
             <dt>Country</dt><dd>{{ server.country_code or 'Unknown' }}{% if server.city %}, {{ server.city }}{% endif %}</dd>
             <dt>Version</dt><dd>{{ latest_scan.version_name if latest_scan else 'Unknown' }}</dd>
             <dt>MOTD</dt><dd>{{ latest_scan.motd if latest_scan else 'N/A' }}</dd>
-            <dt>First Seen</dt><dd>{{ server.first_seen }}</dd>
+            <dt>First Seen</dt><dd><span class="timestamp" data-ts="{{ server.first_seen }}">{{ server.first_seen }}</span></dd>
             <dt>Source</dt><dd>{{ server.source or 'Unknown' }}</dd>
         </dl>
     </div>
@@ -86,6 +86,10 @@
 {% if server %}
 <script src="/static/js/charts.js"></script>
 <script>
+    document.querySelectorAll('.timestamp').forEach(el => {
+        const ts = parseInt(el.dataset.ts);
+        if (ts) el.textContent = new Date(ts * 1000).toLocaleString();
+    });
     loadServerCharts({{ server.id }});
 </script>
 {% endif %}

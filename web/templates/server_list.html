@@ -23,6 +23,9 @@
             <option value="latency" {% if sort == 'latency' %}selected{% endif %}>Latency</option>
             <option value="host" {% if sort == 'host' %}selected{% endif %}>Hostname</option>
         </select>
+        <label style="display: flex; align-items: center; gap: 0.4rem; color: var(--text-muted); font-size: 0.85rem; cursor: pointer;">
+            <input type="checkbox" name="online" value="1" {% if online == '1' %}checked{% endif %}> Online only
+        </label>
         <button type="submit" class="btn">Filter</button>
     </form>
 </div>
@@ -65,11 +68,11 @@
 {% if total_pages > 1 %}
 <div class="pagination">
     {% if page > 1 %}
-    <a href="/servers?page={{ page - 1 }}&country={{ country or '' }}&search={{ search }}&sort={{ sort }}" class="btn btn-sm">Prev</a>
+    <a href="/servers?page={{ page - 1 }}&country={{ country or '' }}&search={{ search }}&sort={{ sort }}&online={{ online }}" class="btn btn-sm">Prev</a>
     {% endif %}
     <span class="muted">Page {{ page }} of {{ total_pages }}</span>
     {% if page < total_pages %}
-    <a href="/servers?page={{ page + 1 }}&country={{ country or '' }}&search={{ search }}&sort={{ sort }}" class="btn btn-sm">Next</a>
+    <a href="/servers?page={{ page + 1 }}&country={{ country or '' }}&search={{ search }}&sort={{ sort }}&online={{ online }}" class="btn btn-sm">Next</a>
     {% endif %}
 </div>
 {% endif %}

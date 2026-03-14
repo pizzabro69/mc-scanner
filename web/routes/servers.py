@@ -12,11 +12,13 @@ async def server_list(
     country: str | None = None,
     search: str | None = None,
     sort: str = "last_seen",
+    online: str | None = None,
 ):
     server_repo = request.app.state.server_repo
     countries = await server_repo.count_by_country()
     servers, total = await server_repo.get_servers_paginated(
         page=page, per_page=50, country=country, search=search, sort_by=sort,
+        online_only=(online == "1"),
     )
     total_pages = (total + 49) // 50
 
@@ -31,6 +33,7 @@ async def server_list(
             "country": country,
             "search": search or "",
             "sort": sort,
+            "online": online or "",
             "countries": countries,
         },
     )

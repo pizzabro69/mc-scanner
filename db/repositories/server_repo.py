@@ -55,6 +55,7 @@ class ServerRepository:
         country: str | None = None,
         search: str | None = None,
         sort_by: str = "last_seen",
+        online_only: bool = False,
     ) -> tuple[list[dict], int]:
         where_clauses = ["s.is_active = 1"]
         params: list = []
@@ -65,6 +66,12 @@ class ServerRepository:
         if search:
             where_clauses.append("s.host LIKE ?")
             params.append(f"%{search}%")
+        if online_only:
+            cutoff = int(time.time()) - 900  # seen in last 15 minutes
+            where_clauses.append("""s.id IN (
+                SELECT DISTINCT server_id FROM scan_results
+                WHERE is_online = 1 AND scanned_at >= ?)""")
+            params.append(cutoff)
 
         where = " AND ".join(where_clauses)
 

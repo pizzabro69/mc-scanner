@@ -1,5 +1,9 @@
+import logging
+
 import aiosqlite
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class Database:
@@ -24,6 +28,26 @@ class Database:
         schema_path = Path(__file__).parent / "schema.sql"
         schema_sql = schema_path.read_text()
         await self._connection.executescript(schema_sql)
+        await self._run_migrations()
+
+    async def _run_migrations(self) -> None:
+        """Add columns that don't exist yet on the servers table."""
+        migrations = [
+            ("last_latency_ms", "REAL"),
+            ("last_players_online", "INTEGER"),
+            ("last_players_max", "INTEGER"),
+            ("last_version", "TEXT"),
+            ("last_motd", "TEXT"),
+        ]
+        for col, col_type in migrations:
+            try:
+                await self._connection.execute(
+                    f"ALTER TABLE servers ADD COLUMN {col} {col_type}"
+                )
+                logger.info(f"Added column servers.{col}")
+            except Exception:
+                pass  # Column already exists
+        await self._connection.commit()
 
     @property
     def conn(self) -> aiosqlite.Connection:

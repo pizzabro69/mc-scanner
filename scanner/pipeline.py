@@ -59,6 +59,14 @@ class ScanPipeline:
 
             if result.is_online:
                 await self._server_repo.update_last_seen(server["id"], now)
+                await self._server_repo.update_last_scan_data(
+                    server["id"],
+                    latency_ms=result.latency_ms,
+                    players_online=result.players_online,
+                    players_max=result.players_max,
+                    version=result.version_name,
+                    motd=result.motd,
+                )
 
             async with lock:
                 stats["scanned"] += 1

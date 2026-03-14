@@ -78,9 +78,9 @@ class ServerRepository:
         allowed_sorts = {
             "last_seen": "s.last_seen DESC NULLS LAST",
             "host": "s.host ASC",
-            "players": "COALESCE(ls.avg_players, 0) DESC",
+            "players": "COALESCE(ls.avg_players, s.last_players_online, 0) DESC",
             "score": "COALESCE(ls.score, 0) DESC",
-            "latency": "COALESCE(ls.avg_latency_ms, 9999) ASC",
+            "latency": "COALESCE(ls.avg_latency_ms, s.last_latency_ms, 9999) ASC",
         }
         order = allowed_sorts.get(sort_by, "s.last_seen DESC NULLS LAST")
 
@@ -105,6 +105,22 @@ class ServerRepository:
     async def update_last_seen(self, server_id: int, timestamp: int) -> None:
         await self._db.conn.execute(
             "UPDATE servers SET last_seen = ? WHERE id = ?", (timestamp, server_id)
+        )
+
+    async def update_last_scan_data(
+        self,
+        server_id: int,
+        latency_ms: float | None = None,
+        players_online: int | None = None,
+        players_max: int | None = None,
+        version: str | None = None,
+        motd: str | None = None,
+    ) -> None:
+        await self._db.conn.execute(
+            """UPDATE servers SET last_latency_ms = ?, last_players_online = ?,
+               last_players_max = ?, last_version = ?, last_motd = ?
+               WHERE id = ?""",
+            (latency_ms, players_online, players_max, version, motd, server_id),
         )
 
     async def update_geo(

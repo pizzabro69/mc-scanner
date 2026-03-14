@@ -36,9 +36,9 @@
             <th>Host</th>
             <th>Country</th>
             <th>Score</th>
-            <th>Avg Latency</th>
-            <th>Avg Players</th>
-            <th>Downtime</th>
+            <th>Latency</th>
+            <th>Players</th>
+            <th>Version</th>
             <th>Last Seen</th>
         </tr>
     </thead>
@@ -52,9 +52,15 @@
                 <span class="score-badge score-{{ 'red' if s.score > 70 else 'orange' if s.score > 40 else 'yellow' }}">{{ s.score|round(1) }}</span>
                 {% else %}-{% endif %}
             </td>
-            <td>{{ (s.avg_latency_ms or 0)|round(0)|int }}ms</td>
-            <td>{{ (s.avg_players or 0)|round(0)|int }}</td>
-            <td>{{ (s.downtime_pct or 0)|round(1) }}%</td>
+            <td>
+                {% set lat = s.avg_latency_ms or s.last_latency_ms %}
+                {% if lat %}{{ lat|round(0)|int }}ms{% else %}-{% endif %}
+            </td>
+            <td>
+                {% set players = s.avg_players or s.last_players_online %}
+                {% if players is not none and players %}{{ players|round(0)|int }}/{{ s.last_players_max or '?' }}{% else %}-{% endif %}
+            </td>
+            <td>{{ s.last_version or '-' }}</td>
             <td>
                 {% if s.last_seen %}
                 <span class="timestamp" data-ts="{{ s.last_seen }}">{{ s.last_seen }}</span>

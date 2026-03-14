@@ -31,19 +31,11 @@ class ScanPipeline:
         logger.info(f"Starting scan cycle for {len(servers)} servers")
         cycle_id = await self._scan_repo.start_cycle()
 
-        # Spread scans over 80% of the interval window
-        window_seconds = self._settings.scan_interval_minutes * 60 * 0.8
-        delay_per_server = window_seconds / len(servers) if len(servers) > 0 else 0
-
         semaphore = asyncio.Semaphore(self._settings.scan_concurrency)
         stats = {"scanned": 0, "online": 0, "total_latency": 0.0}
         lock = asyncio.Lock()
 
-        async def scan_one(server: dict, index: int) -> None:
-            # Stagger start times to spread load
-            if delay_per_server > 0:
-                await asyncio.sleep(delay_per_server * index)
-
+        async def scan_one(server: dict) -> None:
             async with semaphore:
                 result = await ping_server(
                     server["host"],
@@ -74,16 +66,21 @@ class ScanPipeline:
                     stats["online"] += 1
                     stats["total_latency"] += result.latency_ms or 0
 
-            if stats["scanned"] % 100 == 0:
+            if stats["scanned"] % 200 == 0:
                 logger.info(f"Scan progress: {stats['scanned']}/{len(servers)}")
 
-        tasks = [asyncio.create_task(scan_one(s, i)) for i, s in enumerate(servers)]
+        tasks = [asyncio.create_task(scan_one(s)) for s in servers]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Log any unexpected errors
+        errors = 0
         for i, r in enumerate(results):
             if isinstance(r, Exception):
-                logger.error(f"Scan task error for server {servers[i]['host']}: {r}")
+                errors += 1
+                if errors <= 5:
+                    logger.error(f"Scan task error for server {servers[i]['host']}: {r}")
+        if errors > 5:
+            logger.error(f"... and {errors - 5} more scan task errors")
 
         await self._scan_repo.finish_cycle(cycle_id, stats)
         await self._db_commit()

@@ -152,7 +152,16 @@ class ScanResultRepository:
         return [dict(r) for r in rows]
 
     async def get_last_cycle(self) -> dict | None:
-        """Get the most recent scan cycle (completed or running)."""
+        """Get the most recent completed scan cycle, falling back to running."""
+        cursor = await self._db.conn.execute(
+            """SELECT * FROM scan_cycles
+               WHERE status = 'completed'
+               ORDER BY finished_at DESC LIMIT 1"""
+        )
+        row = await cursor.fetchone()
+        if row:
+            return dict(row)
+        # Fall back to any running cycle
         cursor = await self._db.conn.execute(
             "SELECT * FROM scan_cycles ORDER BY started_at DESC LIMIT 1"
         )

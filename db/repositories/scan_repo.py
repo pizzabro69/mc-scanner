@@ -135,6 +135,40 @@ class ScanResultRepository:
         row = await cursor.fetchone()
         return row[0] if row else 0
 
+    async def get_error_breakdown(self, limit_hours: int = 1) -> list[dict]:
+        """Get breakdown of error types from recent scans."""
+        cutoff = int(time.time()) - (limit_hours * 3600)
+        cursor = await self._db.conn.execute(
+            """SELECT
+                COALESCE(error_message, 'online') as error_type,
+                COUNT(*) as count
+               FROM scan_results
+               WHERE scanned_at >= ?
+               GROUP BY error_type
+               ORDER BY count DESC""",
+            (cutoff,),
+        )
+        rows = await cursor.fetchall()
+        return [dict(r) for r in rows]
+
+    async def get_last_cycle(self) -> dict | None:
+        """Get the most recent scan cycle (completed or running)."""
+        cursor = await self._db.conn.execute(
+            "SELECT * FROM scan_cycles ORDER BY started_at DESC LIMIT 1"
+        )
+        row = await cursor.fetchone()
+        return dict(row) if row else None
+
+    async def get_recent_online_count(self) -> int:
+        """Count servers online in the last hour of scans."""
+        cutoff = int(time.time()) - 3600
+        cursor = await self._db.conn.execute(
+            """SELECT COUNT(DISTINCT server_id) FROM scan_results
+               WHERE scanned_at >= ? AND is_online = 1""",
+            (cutoff,),
+        )
+        return (await cursor.fetchone())[0]
+
     async def cleanup_old_results(self, older_than_days: int = 90) -> int:
         cutoff = int(time.time()) - (older_than_days * 86400)
         cursor = await self._db.conn.execute(

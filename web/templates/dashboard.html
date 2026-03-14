@@ -12,7 +12,7 @@
     </div>
     <div class="stat-card">
         <span class="stat-value">{{ online_now }}</span>
-        <span class="stat-label">Online Now</span>
+        <span class="stat-label">Online (last 1h)</span>
     </div>
     <div class="stat-card">
         <span class="stat-value">{{ avg_score }}</span>
@@ -23,6 +23,72 @@
         <span class="stat-label">Countries</span>
     </div>
 </div>
+
+{% if last_cycle %}
+<div class="card" style="margin-bottom: 1.5rem;">
+    <h3>Last Scan Cycle</h3>
+    <div class="stats-grid" style="margin-bottom: 1rem;">
+        <div class="stat-card stat-card-sm">
+            <span class="stat-value stat-value-sm {% if last_cycle.status == 'completed' %}text-green{% elif last_cycle.status == 'running' %}text-orange{% endif %}">{{ last_cycle.status }}</span>
+            <span class="stat-label">Status</span>
+        </div>
+        <div class="stat-card stat-card-sm">
+            <span class="stat-value stat-value-sm">{{ last_cycle.servers_scanned }}</span>
+            <span class="stat-label">Scanned</span>
+        </div>
+        <div class="stat-card stat-card-sm">
+            <span class="stat-value stat-value-sm">{{ last_cycle.servers_online }}</span>
+            <span class="stat-label">Online</span>
+        </div>
+        <div class="stat-card stat-card-sm">
+            <span class="stat-value stat-value-sm">{{ (last_cycle.avg_latency_ms or 0)|round(0)|int }}ms</span>
+            <span class="stat-label">Avg Latency</span>
+        </div>
+    </div>
+    {% if last_cycle.started_at %}
+    <p class="muted" style="margin: 0; font-size: 0.85rem;">
+        Started: <span class="timestamp" data-ts="{{ last_cycle.started_at }}"></span>
+        {% if last_cycle.finished_at %}
+         | Finished: <span class="timestamp" data-ts="{{ last_cycle.finished_at }}"></span>
+         | Duration: {{ ((last_cycle.finished_at - last_cycle.started_at) / 60)|round(1) }} min
+        {% endif %}
+    </p>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if error_breakdown %}
+<div class="card" style="margin-bottom: 1.5rem;">
+    <h3>Scan Results Breakdown (last 1h)</h3>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Result</th>
+                <th>Count</th>
+                <th>%</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set total_results = error_breakdown|sum(attribute='count') %}
+            {% for row in error_breakdown %}
+            <tr>
+                <td>
+                    {% if row.error_type == 'online' %}
+                        <span style="color: #4caf50;">online</span>
+                    {% elif 'timeout' in row.error_type %}
+                        <span style="color: #ff9800;">{{ row.error_type }}</span>
+                    {% else %}
+                        <span style="color: #f44336;">{{ row.error_type[:80] }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ row.count }}</td>
+                <td>{{ (row.count / total_results * 100)|round(1) }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
 
 <div class="grid-2">
     <div class="card">
@@ -56,7 +122,7 @@
         </table>
         <a href="/leads" class="btn btn-sm">View All Leads</a>
         {% else %}
-        <p class="muted">No leads scored yet. Data will appear after enough scan cycles.</p>
+        <p class="muted">No leads scored yet. Need at least 20 scans per server (a few hours).</p>
         {% endif %}
     </div>
 
@@ -71,6 +137,11 @@
 
 {% block scripts %}
 <script>
+document.querySelectorAll('.timestamp').forEach(el => {
+    const ts = parseInt(el.dataset.ts);
+    if (ts) el.textContent = new Date(ts * 1000).toLocaleString();
+});
+
 const countryData = {{ countries | tojson }};
 const cycleData = {{ recent_cycles | tojson }};
 

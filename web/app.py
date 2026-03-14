@@ -59,6 +59,21 @@ async def lifespan(app: FastAPI):
     scheduler.start()
     app.state.scheduler = scheduler
 
+    # Suppress noisy DNS resolution errors from mcstatus SRV lookups
+    loop = asyncio.get_event_loop()
+    _default_handler = loop.get_exception_handler()
+
+    def _quiet_dns_handler(loop, context):
+        exc = context.get("exception")
+        if isinstance(exc, OSError) and "address" in str(exc).lower() or "name" in str(exc).lower():
+            return  # Suppress DNS resolution noise
+        if _default_handler:
+            _default_handler(loop, context)
+        else:
+            loop.default_exception_handler(context)
+
+    loop.set_exception_handler(_quiet_dns_handler)
+
     # Trigger initial run in background
     asyncio.create_task(scheduler.trigger_initial_run())
 

@@ -12,8 +12,8 @@ services:
     environment:
       - MCS_DB_PATH=/data/mc_scanner.db
       - MCS_SCAN_INTERVAL_MINUTES=12
-      - MCS_SCAN_CONCURRENCY=50
-      - MCS_TARGET_COUNTRIES=["NL","DE","BE","GB","FR"]
+      - MCS_SCAN_CONCURRENCY=150
+      - MCS_SCAN_TIMEOUT_SECONDS=10.0
       - MCS_WEB_PORT=8000
 
 volumes:

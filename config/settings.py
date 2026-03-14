@@ -9,8 +9,8 @@ class Settings(BaseSettings):
 
     # Scanning
     scan_interval_minutes: int = 12
-    scan_concurrency: int = 50
-    scan_timeout_seconds: float = 5.0
+    scan_concurrency: int = 150
+    scan_timeout_seconds: float = 10.0
 
     # Scraping
     scrape_interval_hours: int = 24

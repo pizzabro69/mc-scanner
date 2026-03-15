@@ -101,8 +101,8 @@
                     <th>Server</th>
                     <th>Country</th>
                     <th>Score</th>
-                    <th>Downtime</th>
-                    <th>Latency</th>
+                    <th>Opportunity</th>
+                    <th>Pain</th>
                     <th>Players</th>
                 </tr>
             </thead>
@@ -112,9 +112,9 @@
                     <td>{{ loop.index }}</td>
                     <td><a href="/servers/{{ lead.server_id }}">{{ lead.host }}:{{ lead.port }}</a></td>
                     <td>{{ lead.country_code or '?' }}</td>
-                    <td><span class="score-badge score-{{ 'red' if lead.score > 70 else 'orange' if lead.score > 40 else 'yellow' }}">{{ lead.score|round(1) }}</span></td>
-                    <td>{{ lead.downtime_pct|round(1) }}%</td>
-                    <td>{{ (lead.avg_latency_ms or 0)|round(0)|int }}ms</td>
+                    <td><span class="score-badge score-{{ 'red' if lead.score > 60 else 'orange' if lead.score > 30 else 'yellow' }}">{{ lead.score|round(1) }}</span></td>
+                    <td><span class="score-badge score-{{ 'green' if (lead.opportunity_score or 0) > 60 else 'orange' if (lead.opportunity_score or 0) > 30 else 'dim' }}">{{ (lead.opportunity_score or 0)|round(0)|int }}</span></td>
+                    <td><span class="score-badge score-{{ 'red' if (lead.pain_score or 0) > 60 else 'orange' if (lead.pain_score or 0) > 30 else 'dim' }}">{{ (lead.pain_score or 0)|round(0)|int }}</span></td>
                     <td>{{ (lead.avg_players or 0)|round(0)|int }}</td>
                 </tr>
                 {% endfor %}

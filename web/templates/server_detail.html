@@ -26,13 +26,33 @@
     </div>
     <div class="stat-card">
         {% if lead_score %}
-        <span class="stat-value score-badge score-{{ 'red' if lead_score.score > 70 else 'orange' if lead_score.score > 40 else 'yellow' }}">
+        <span class="stat-value score-badge score-{{ 'red' if lead_score.score > 60 else 'orange' if lead_score.score > 30 else 'yellow' }}">
             {{ lead_score.score|round(1) }}
         </span>
         {% else %}
         <span class="stat-value">-</span>
         {% endif %}
         <span class="stat-label">Lead Score</span>
+    </div>
+    <div class="stat-card">
+        {% if lead_score %}
+        <span class="stat-value score-badge score-{{ 'green' if (lead_score.opportunity_score or 0) > 60 else 'orange' if (lead_score.opportunity_score or 0) > 30 else 'dim' }}">
+            {{ (lead_score.opportunity_score or 0)|round(0)|int }}
+        </span>
+        {% else %}
+        <span class="stat-value">-</span>
+        {% endif %}
+        <span class="stat-label">Opportunity</span>
+    </div>
+    <div class="stat-card">
+        {% if lead_score %}
+        <span class="stat-value score-badge score-{{ 'red' if (lead_score.pain_score or 0) > 60 else 'orange' if (lead_score.pain_score or 0) > 30 else 'dim' }}">
+            {{ (lead_score.pain_score or 0)|round(0)|int }}
+        </span>
+        {% else %}
+        <span class="stat-value">-</span>
+        {% endif %}
+        <span class="stat-label">Pain</span>
     </div>
 </div>
 
@@ -50,17 +70,37 @@
 
     <div class="card">
         <h3>Score Breakdown</h3>
-        {% if score_details %}
+        {% if score_details and score_details.signals is defined %}
+        <p style="font-size: 0.85rem; margin-bottom: 0.75rem;">
+            <span class="score-badge score-green">Opportunity: {{ score_details.opportunity_score }}</span>
+            <span class="score-badge score-red" style="margin-left: 0.5rem;">Pain: {{ score_details.pain_score }}</span>
+        </p>
         <table class="data-table compact">
             <thead><tr><th>Signal</th><th>Value</th><th>Score</th><th>Weight</th></tr></thead>
             <tbody>
-                {% for name, detail in score_details.items() %}
+                {% for name, detail in score_details.signals.items() %}
                 <tr>
                     <td>{{ name }}</td>
                     <td>{{ detail.desc }}</td>
                     <td>{{ detail.score|round(1) }}</td>
                     <td>{{ (detail.weight * 100)|round(0)|int }}%</td>
                 </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% elif score_details %}
+        <table class="data-table compact">
+            <thead><tr><th>Signal</th><th>Value</th><th>Score</th><th>Weight</th></tr></thead>
+            <tbody>
+                {% for name, detail in score_details.items() %}
+                {% if detail is mapping and detail.desc is defined %}
+                <tr>
+                    <td>{{ name }}</td>
+                    <td>{{ detail.desc }}</td>
+                    <td>{{ detail.score|round(1) }}</td>
+                    <td>{{ (detail.weight * 100)|round(0)|int }}%</td>
+                </tr>
+                {% endif %}
                 {% endfor %}
             </tbody>
         </table>

@@ -9,6 +9,8 @@ class LeadRepository:
         self,
         server_id: int,
         score: float,
+        opportunity_score: float,
+        pain_score: float,
         downtime_pct: float,
         avg_latency_ms: float | None,
         p95_latency_ms: float | None,
@@ -21,11 +23,14 @@ class LeadRepository:
     ) -> None:
         await self._db.conn.execute(
             """INSERT INTO lead_scores
-               (server_id, score, downtime_pct, avg_latency_ms, p95_latency_ms,
-                timeout_count, avg_players, max_players, score_details, calculated_at, window_hours)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               (server_id, score, opportunity_score, pain_score, downtime_pct,
+                avg_latency_ms, p95_latency_ms, timeout_count, avg_players,
+                max_players, score_details, calculated_at, window_hours)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(server_id) DO UPDATE SET
                    score = excluded.score,
+                   opportunity_score = excluded.opportunity_score,
+                   pain_score = excluded.pain_score,
                    downtime_pct = excluded.downtime_pct,
                    avg_latency_ms = excluded.avg_latency_ms,
                    p95_latency_ms = excluded.p95_latency_ms,
@@ -35,8 +40,9 @@ class LeadRepository:
                    score_details = excluded.score_details,
                    calculated_at = excluded.calculated_at,
                    window_hours = excluded.window_hours""",
-            (server_id, score, downtime_pct, avg_latency_ms, p95_latency_ms,
-             timeout_count, avg_players, max_players, score_details, calculated_at, window_hours),
+            (server_id, score, opportunity_score, pain_score, downtime_pct,
+             avg_latency_ms, p95_latency_ms, timeout_count, avg_players,
+             max_players, score_details, calculated_at, window_hours),
         )
 
     async def get_top_leads(self, limit: int = 10, country: str | None = None) -> list[dict]:
@@ -68,6 +74,8 @@ class LeadRepository:
         min_score: float = 0,
         country: str | None = None,
         sort_by: str = "score",
+        min_players: float = 0,
+        active_only: bool = False,
     ) -> tuple[list[dict], int]:
         where_clauses = ["s.is_active = 1", "ls.score >= ?"]
         params: list = [min_score]
@@ -76,10 +84,19 @@ class LeadRepository:
             where_clauses.append("s.country_code = ?")
             params.append(country)
 
+        if min_players > 0:
+            where_clauses.append("COALESCE(ls.avg_players, 0) >= ?")
+            params.append(min_players)
+
+        if active_only:
+            where_clauses.append("COALESCE(ls.avg_players, 0) >= 3")
+
         where = " AND ".join(where_clauses)
 
         allowed_sorts = {
             "score": "ls.score DESC",
+            "opportunity": "ls.opportunity_score DESC",
+            "pain": "ls.pain_score DESC",
             "downtime": "ls.downtime_pct DESC",
             "latency": "ls.avg_latency_ms DESC NULLS LAST",
             "players": "ls.avg_players DESC NULLS LAST",

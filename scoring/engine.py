@@ -6,9 +6,16 @@ from config.settings import Settings
 from db.repositories.lead_repo import LeadRepository
 from db.repositories.scan_repo import ScanResultRepository
 from db.repositories.server_repo import ServerRepository
-from scoring.signals import ALL_SIGNALS
+from scoring.signals import OPPORTUNITY_SIGNALS, PAIN_SIGNALS
 
 logger = logging.getLogger(__name__)
+
+
+def _weighted_score(signals) -> float:
+    total_weight = sum(s.weight for s in signals)
+    if total_weight == 0:
+        return 0
+    return sum(s.score * s.weight for s in signals) / total_weight
 
 
 class LeadScoringEngine:
@@ -38,37 +45,49 @@ class LeadScoringEngine:
                 if (stats.get("total_scans") or 0) < self._settings.min_scans_for_scoring:
                     continue
 
-                signals = [fn(stats) for fn in ALL_SIGNALS]
-                total_weight = sum(s.weight for s in signals)
-                composite = sum(s.score * s.weight for s in signals) / total_weight
+                # Compute opportunity and pain sub-scores
+                opp_signals = [fn(stats) for fn in OPPORTUNITY_SIGNALS]
+                pain_signals = [fn(stats) for fn in PAIN_SIGNALS]
 
-                # Multiplier: high players + bad perf = prime lead
-                perf_signals = [
-                    s for s in signals if s.name in ("downtime", "latency", "timeouts")
-                ]
-                avg_perf_score = sum(s.score for s in perf_signals) / len(perf_signals)
-                player_signal = next(s for s in signals if s.name == "player_load")
+                opportunity = _weighted_score(opp_signals)
+                pain = _weighted_score(pain_signals)
 
-                if player_signal.raw_value > 20 and avg_perf_score > 40:
-                    composite = min(composite * 1.3, 100)
+                # Final score: opportunity gates the score, pain multiplies it.
+                # A dead server with high pain still scores near zero.
+                # Formula: opportunity * (0.4 + 0.6 * pain/100)
+                # - Server with 0 pain still gets 40% of opportunity (good server, might upgrade)
+                # - Server with max pain gets full opportunity score
+                # - Server with 0 opportunity gets near-zero regardless of pain
+                if opportunity < 1:
+                    final_score = 0.0
+                else:
+                    pain_factor = 0.4 + 0.6 * (pain / 100)
+                    final_score = opportunity * pain_factor
 
-                # Zero out tiny/dead servers
-                if player_signal.raw_value < 3 and (stats.get("avg_latency_ms") or 0) == 0:
-                    composite = 0
+                # Clamp
+                final_score = max(0, min(final_score, 100))
 
+                # Build details for both signal groups
+                all_signals = opp_signals + pain_signals
                 details = {
-                    s.name: {
-                        "raw": round(s.raw_value, 2),
-                        "score": round(s.score, 2),
-                        "weight": s.weight,
-                        "desc": s.description,
-                    }
-                    for s in signals
+                    "opportunity_score": round(opportunity, 2),
+                    "pain_score": round(pain, 2),
+                    "signals": {
+                        s.name: {
+                            "raw": round(s.raw_value, 2),
+                            "score": round(s.score, 2),
+                            "weight": s.weight,
+                            "desc": s.description,
+                        }
+                        for s in all_signals
+                    },
                 }
 
                 await self._lead_repo.upsert_score(
                     server_id=server["id"],
-                    score=round(composite, 2),
+                    score=round(final_score, 2),
+                    opportunity_score=round(opportunity, 2),
+                    pain_score=round(pain, 2),
                     downtime_pct=stats.get("downtime_pct", 0),
                     avg_latency_ms=stats.get("avg_latency_ms"),
                     p95_latency_ms=stats.get("p95_latency_ms"),

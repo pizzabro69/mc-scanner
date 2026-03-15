@@ -32,14 +32,14 @@ class Database:
 
     async def _run_migrations(self) -> None:
         """Add columns that don't exist yet on the servers table."""
-        migrations = [
+        server_migrations = [
             ("last_latency_ms", "REAL"),
             ("last_players_online", "INTEGER"),
             ("last_players_max", "INTEGER"),
             ("last_version", "TEXT"),
             ("last_motd", "TEXT"),
         ]
-        for col, col_type in migrations:
+        for col, col_type in server_migrations:
             try:
                 await self._connection.execute(
                     f"ALTER TABLE servers ADD COLUMN {col} {col_type}"
@@ -47,6 +47,20 @@ class Database:
                 logger.info(f"Added column servers.{col}")
             except Exception:
                 pass  # Column already exists
+
+        lead_migrations = [
+            ("opportunity_score", "REAL DEFAULT 0"),
+            ("pain_score", "REAL DEFAULT 0"),
+        ]
+        for col, col_type in lead_migrations:
+            try:
+                await self._connection.execute(
+                    f"ALTER TABLE lead_scores ADD COLUMN {col} {col_type}"
+                )
+                logger.info(f"Added column lead_scores.{col}")
+            except Exception:
+                pass  # Column already exists
+
         await self._connection.commit()
 
     @property

@@ -141,6 +141,8 @@ h3 { font-size: 1rem; margin-bottom: 0.75rem; color: var(--text-muted); }
 .score-red { background: rgba(244, 67, 54, 0.2); color: var(--red); }
 .score-orange { background: rgba(255, 152, 0, 0.2); color: var(--orange); }
 .score-yellow { background: rgba(255, 193, 7, 0.2); color: var(--yellow); }
+.score-green { background: rgba(76, 175, 80, 0.2); color: var(--green); }
+.score-dim { background: rgba(107, 112, 128, 0.15); color: var(--text-muted); }
 
 /* Status */
 .online { color: var(--green); }

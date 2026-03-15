@@ -2,10 +2,12 @@
 {% set active_page = "leads" %}
 {% block title %}Leads - MC Scanner{% endblock %}
 
+{% set qs = "min_score=" ~ min_score ~ "&country=" ~ (country or '') ~ "&sort=" ~ sort ~ "&min_players=" ~ min_players ~ "&active=" ~ active %}
+
 {% block content %}
 <div class="page-header">
     <h1>Leads <span class="muted">({{ total }})</span></h1>
-    <a href="/leads/export?min_score={{ min_score }}&country={{ country or '' }}" class="btn">Export CSV</a>
+    <a href="/leads/export?{{ qs }}" class="btn">Export CSV</a>
 </div>
 
 <div class="filters">
@@ -13,6 +15,10 @@
         <label class="filter-label">
             Min Score
             <input type="number" name="min_score" value="{{ min_score }}" min="0" max="100" step="5" class="input input-sm">
+        </label>
+        <label class="filter-label">
+            Min Players
+            <input type="number" name="min_players" value="{{ min_players }}" min="0" step="1" class="input input-sm">
         </label>
         <select name="country" class="input">
             <option value="">All Countries</option>
@@ -23,11 +29,18 @@
             {% endfor %}
         </select>
         <select name="sort" class="input">
-            <option value="score" {% if sort == 'score' %}selected{% endif %}>Score</option>
-            <option value="downtime" {% if sort == 'downtime' %}selected{% endif %}>Downtime %</option>
-            <option value="latency" {% if sort == 'latency' %}selected{% endif %}>Latency</option>
+            <option value="score" {% if sort == 'score' %}selected{% endif %}>Lead Score</option>
+            <option value="opportunity" {% if sort == 'opportunity' %}selected{% endif %}>Opportunity</option>
+            <option value="pain" {% if sort == 'pain' %}selected{% endif %}>Pain</option>
             <option value="players" {% if sort == 'players' %}selected{% endif %}>Players</option>
+            <option value="latency" {% if sort == 'latency' %}selected{% endif %}>Latency</option>
+            <option value="downtime" {% if sort == 'downtime' %}selected{% endif %}>Downtime</option>
         </select>
+        <label class="filter-label" style="cursor:pointer">
+            <input type="checkbox" name="active" value="1" {% if active == '1' %}checked{% endif %} style="margin-right:4px">
+            Active only
+        </label>
+        <input type="hidden" name="active" value="{{ '1' if active == '1' else '0' }}">
         <button type="submit" class="btn">Filter</button>
     </form>
 </div>
@@ -38,13 +51,13 @@
             <th>#</th>
             <th>Server</th>
             <th>Country</th>
-            <th>Score</th>
-            <th>Downtime</th>
-            <th>Avg Latency</th>
-            <th>P95 Latency</th>
-            <th>Timeouts</th>
+            <th>Lead Score</th>
+            <th>Opportunity</th>
+            <th>Pain</th>
             <th>Avg Players</th>
             <th>Max Players</th>
+            <th>Avg Latency</th>
+            <th>Downtime</th>
         </tr>
     </thead>
     <tbody>
@@ -53,13 +66,25 @@
             <td>{{ (page - 1) * 50 + loop.index }}</td>
             <td><a href="/servers/{{ lead.server_id }}">{{ lead.host }}:{{ lead.port }}</a></td>
             <td>{{ lead.country_code or '?' }}</td>
-            <td><span class="score-badge score-{{ 'red' if lead.score > 70 else 'orange' if lead.score > 40 else 'yellow' }}">{{ lead.score|round(1) }}</span></td>
-            <td>{{ lead.downtime_pct|round(1) }}%</td>
-            <td>{{ (lead.avg_latency_ms or 0)|round(0)|int }}ms</td>
-            <td>{{ (lead.p95_latency_ms or 0)|round(0)|int }}ms</td>
-            <td>{{ lead.timeout_count }}</td>
+            <td>
+                <span class="score-badge score-{{ 'red' if lead.score > 60 else 'orange' if lead.score > 30 else 'yellow' }}">
+                    {{ lead.score|round(1) }}
+                </span>
+            </td>
+            <td>
+                <span class="score-badge score-{{ 'green' if (lead.opportunity_score or 0) > 60 else 'orange' if (lead.opportunity_score or 0) > 30 else 'dim' }}">
+                    {{ (lead.opportunity_score or 0)|round(0)|int }}
+                </span>
+            </td>
+            <td>
+                <span class="score-badge score-{{ 'red' if (lead.pain_score or 0) > 60 else 'orange' if (lead.pain_score or 0) > 30 else 'dim' }}">
+                    {{ (lead.pain_score or 0)|round(0)|int }}
+                </span>
+            </td>
             <td>{{ (lead.avg_players or 0)|round(0)|int }}</td>
             <td>{{ lead.max_players or 0 }}</td>
+            <td>{{ (lead.avg_latency_ms or 0)|round(0)|int }}ms</td>
+            <td>{{ lead.downtime_pct|round(1) }}%</td>
         </tr>
         {% endfor %}
     </tbody>
@@ -68,12 +93,27 @@
 {% if total_pages > 1 %}
 <div class="pagination">
     {% if page > 1 %}
-    <a href="/leads?page={{ page - 1 }}&min_score={{ min_score }}&country={{ country or '' }}&sort={{ sort }}" class="btn btn-sm">Prev</a>
+    <a href="/leads?page={{ page - 1 }}&{{ qs }}" class="btn btn-sm">Prev</a>
     {% endif %}
     <span class="muted">Page {{ page }} of {{ total_pages }}</span>
     {% if page < total_pages %}
-    <a href="/leads?page={{ page + 1 }}&min_score={{ min_score }}&country={{ country or '' }}&sort={{ sort }}" class="btn btn-sm">Next</a>
+    <a href="/leads?page={{ page + 1 }}&{{ qs }}" class="btn btn-sm">Next</a>
     {% endif %}
 </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Make checkbox work properly with form (only send one value)
+document.querySelector('input[type="checkbox"][name="active"]').addEventListener('change', function() {
+    this.nextElementSibling && (this.parentElement.nextElementSibling.value = this.checked ? '1' : '0');
+});
+const cb = document.querySelector('input[type="checkbox"][name="active"]');
+const hidden = document.querySelector('input[type="hidden"][name="active"]');
+if (cb && hidden) {
+    cb.addEventListener('change', function() { hidden.value = this.checked ? '1' : '0'; });
+    cb.name = '';  // Remove name from checkbox so only hidden input submits
+}
+</script>
 {% endblock %}
